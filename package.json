@@ -5,9 +5,10 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cd container/agent-runner && npm install && npm run build",
+    "build:agent": "cd container/agent-runner && npm install && npm run build",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts",
+    "dev": "npm run build:agent && tsx src/index.ts",
     "auth": "tsx src/whatsapp-auth.ts",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\"",

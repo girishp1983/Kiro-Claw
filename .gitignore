@@ -22,6 +22,9 @@ groups/global/*
 *.keys.json
 .env
 
+# Installer binaries
+*.pkg
+
 # OS
 .DS_Store
 
