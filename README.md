@@ -1,13 +1,22 @@
-# NanoClaw
+# Kiro-Claw
 
-Personal WhatsApp assistant powered by **Kiro CLI** and a **custom Kiro agent**.
+Personal WhatsApp assistant powered by **Kiro CLI** and a **custom Kiro agent**. It has 500+ tools like audio, video generation; email, calendar etc.
 
-NanoClaw runs as a small Node.js service:
+Kiro-Claw runs as a small Node.js service:
 - Reads inbound WhatsApp messages
 - Persists state in SQLite
 - Launches `kiro-cli chat` for reasoning/execution
 - Delivers responses back to WhatsApp
-- Supports one-time and recurring scheduled tasks
+
+# Features of Kiro-Claw
+- Can run 24 by 7
+- 500+ plus tools
+- Access via WhatApp
+- Supports one-time and recurring scheduled tasks, just ask it to do something at certain time
+- It has Agent.md file that it uses to remember your details and preference. It intimately knows you over a period of time. You can defini its soul there.
+- For other memories it can create .md files, it can build Skill.md to develop skills
+- Leverages Custom Agent feature of Kiro-CLI. It loads MCPs, Skills and Agents.md as per agent_config.json
+- Setup is very easy. Just lauch Kiro-CLI in route folder and ask it to help you with setup. That is it!!!
 
 ## Quick Start
 
@@ -44,7 +53,7 @@ kiro-cli
 
 ## How Kiro Is Used
 
-NanoClaw launches Kiro through `container/agent-runner`:
+Kiro-Claw launches Kiro through `container/agent-runner`:
 - Command shape:
   - `kiro-cli chat --no-interactive --trust-all-tools --wrap never --agent <agentName> <prompt>`
 - Agent name is read from:
@@ -54,9 +63,9 @@ NanoClaw launches Kiro through `container/agent-runner`:
 - Optional model override:
   - `KIRO_MODEL`
 
-NanoClaw does not pass `--resume`; each Kiro invocation starts a new session.
+Kiro-Claw does not pass `--resume`; each Kiro invocation starts a new session.
 
-At run time, NanoClaw ensures your Kiro agent config (`~/.kiro/agents/agent_config.json`) includes:
+At run time, Kiro-Claw ensures your Kiro agent config (`~/.kiro/agents/agent_config.json`) includes:
 - `nanoclaw` MCP server entry
 - `@nanoclaw` in `tools` and `allowedTools`
 - steering resource `file://.kiro/steering/Agents.md`
@@ -65,11 +74,11 @@ Kiro tool/MCP availability and resource loading come from this same agent config
 
 ## Steering Bootstrap
 
-Before agent execution, NanoClaw bootstraps steering files if missing:
+Before agent execution, Kiro-Claw bootstraps steering files if missing:
 - `Agents_template.md` -> `groups/main/.kiro/steering/Agents.md` (create only if target missing)
 - `Agents_global.md` -> `groups/global/.kiro/steering/Agents.md` (create only if target missing)
 
-If target files already exist, NanoClaw leaves them untouched.
+If target files already exist, Kiro-Claw leaves them untouched.
 
 ## Core Features
 
