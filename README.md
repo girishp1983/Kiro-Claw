@@ -40,14 +40,30 @@ npm start
 
 NanoClaw launches Kiro through `container/agent-runner`:
 - Command shape:
-  - `kiro-cli chat --no-interactive --trust-all-tools --wrap never --agent <agentName> [--resume] <prompt>`
+  - `kiro-cli chat --no-interactive --trust-all-tools --wrap never --agent <agentName> <prompt>`
 - Agent name is read from:
   - `~/.kiro/agents/agent_config.json` (`name`)
   - or `KIRO_AGENT_NAME` env override
+  - default fallback: `kiro-assistant`
 - Optional model override:
   - `KIRO_MODEL`
 
-At run time, NanoClaw ensures your Kiro agent config includes a `nanoclaw` MCP entry and `@nanoclaw` tool tags so task/message tools remain available.
+NanoClaw does not pass `--resume`; each Kiro invocation starts a new session.
+
+At run time, NanoClaw ensures your Kiro agent config (`~/.kiro/agents/agent_config.json`) includes:
+- `nanoclaw` MCP server entry
+- `@nanoclaw` in `tools` and `allowedTools`
+- steering resource `file://.kiro/steering/Agents.md`
+
+Kiro tool/MCP availability and resource loading come from this same agent config file, including skill/resource paths (commonly `~/.kiro/skills`).
+
+## Steering Bootstrap
+
+Before agent execution, NanoClaw bootstraps steering files if missing:
+- `Agents_template.md` -> `groups/main/.kiro/steering/Agents.md` (create only if target missing)
+- `Agents_global.md` -> `groups/global/.kiro/steering/Agents.md` (create only if target missing)
+
+If target files already exist, NanoClaw leaves them untouched.
 
 ## Core Features
 
@@ -79,8 +95,7 @@ flowchart LR
 
 Memory for Kiro comes from multiple layers:
 - Prompt context from SQL (`messages` since last cursor)
-- Kiro conversation continuation via `--resume` in the same group working directory
-- Group files in `groups/<group>/` (including `CLAUDE.md` if used by agent/tools)
+- Group files in `groups/<group>/` (especially `.kiro/steering/*.md` and other memory `.md` files)
 - Kiro custom-agent prompt/config from `~/.kiro/agents/agent_config.json`
 - Task/run metadata in SQL (`scheduled_tasks`, `task_run_logs`)
 
@@ -100,11 +115,12 @@ tail -f logs/nanoclaw.error.log
 ## Docs
 
 See `analyze_architecture/`:
-- `architecture.md`
+- `Architecture.md`
 - `CONFIGURATION.md`
 - `MEMORY.md`
 - `SCHEDULED_TASKS.md`
-- `Launch_Claude.md` (kept filename, content is Kiro launch path)
+- `Launch_Kiro_nanoClaw.md`
+- `Linting.md`
 
 ## License
 

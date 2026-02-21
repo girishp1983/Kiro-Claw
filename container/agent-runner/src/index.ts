@@ -62,7 +62,9 @@ const MAX_CAPTURE_CHARS = 10 * 1024 * 1024;
 
 const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
 const OUTPUT_END_MARKER = '---NANOCLAW_OUTPUT_END---';
-const KIRO_STEERING_GLOB = 'file://.kiro/steering/**/*.md';
+const KIRO_STEERING_RELATIVE_PREFIX = 'file://.kiro/steering/';
+const KIRO_MAIN_STEERING_RESOURCE = 'file://.kiro/steering/Agents.md';
+const KIRO_MAIN_STEERING_ABS_SUFFIX = '/groups/main/.kiro/steering/Agents.md';
 
 let activeChild: ChildProcess | null = null;
 
@@ -213,6 +215,23 @@ function ensureArrayStringIncludes(
   return arr;
 }
 
+function ensureSteeringResource(
+  value: unknown,
+): string[] {
+  const arr = Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === 'string')
+    : [];
+  const filtered = arr.filter(
+    (entry) =>
+      !entry.startsWith(KIRO_STEERING_RELATIVE_PREFIX)
+      && !entry.endsWith(KIRO_MAIN_STEERING_ABS_SUFFIX),
+  );
+  if (!filtered.includes(KIRO_MAIN_STEERING_RESOURCE)) {
+    filtered.push(KIRO_MAIN_STEERING_RESOURCE);
+  }
+  return filtered;
+}
+
 function ensureNanoclawMcpForKiro(
   input: ContainerInput,
 ): void {
@@ -247,7 +266,7 @@ function ensureNanoclawMcpForKiro(
     parsed.mcpServers = mcpServers;
     parsed.tools = ensureArrayStringIncludes(parsed.tools, '@nanoclaw');
     parsed.allowedTools = ensureArrayStringIncludes(parsed.allowedTools, '@nanoclaw');
-    parsed.resources = ensureArrayStringIncludes(parsed.resources, KIRO_STEERING_GLOB);
+    parsed.resources = ensureSteeringResource(parsed.resources);
 
     fs.writeFileSync(configPath, JSON.stringify(parsed, null, 2) + '\n');
   } catch (err) {
@@ -257,7 +276,6 @@ function ensureNanoclawMcpForKiro(
 
 async function runKiroChat(
   prompt: string,
-  sessionId: string | undefined,
   input: ContainerInput,
 ): Promise<ContainerOutput> {
   ensureNanoclawMcpForKiro(input);
@@ -271,10 +289,6 @@ async function runKiroChat(
     '--agent',
     agentName,
   ];
-
-  if (sessionId) {
-    args.push('--resume');
-  }
 
   if (process.env.KIRO_MODEL && process.env.KIRO_MODEL.trim()) {
     args.push('--model', process.env.KIRO_MODEL.trim());
@@ -297,7 +311,7 @@ async function runKiroChat(
     let stdout = '';
     let stderr = '';
 
-    log(`Spawning kiro-cli (agent=${agentName}, resume=${sessionId ? 'yes' : 'no'})`);
+    log(`Spawning kiro-cli (agent=${agentName}, new-session=true)`);
 
     const child = spawn('kiro-cli', args, {
       cwd: GROUP_DIR,
@@ -324,7 +338,7 @@ async function runKiroChat(
       resolve({
         status: 'error',
         result: null,
-        newSessionId: sessionId || createSessionId(input.groupFolder),
+        newSessionId: createSessionId(input.groupFolder),
         error: `Failed to start kiro-cli: ${err.message}`,
       });
     });
@@ -339,7 +353,7 @@ async function runKiroChat(
         resolve({
           status: 'success',
           result: cleanStdout || null,
-          newSessionId: sessionId || createSessionId(input.groupFolder),
+          newSessionId: createSessionId(input.groupFolder),
         });
         return;
       }
@@ -349,7 +363,7 @@ async function runKiroChat(
       resolve({
         status: 'error',
         result: null,
-        newSessionId: sessionId || createSessionId(input.groupFolder),
+        newSessionId: createSessionId(input.groupFolder),
         error: details.slice(-1000),
       });
     });
@@ -407,8 +421,6 @@ async function main(): Promise<void> {
     // ignore
   }
 
-  let sessionId = containerInput.sessionId;
-
   // Build initial prompt (drain any pending IPC messages too)
   let prompt = containerInput.prompt;
   if (containerInput.isScheduledTask) {
@@ -422,17 +434,14 @@ async function main(): Promise<void> {
 
   try {
     while (true) {
-      log(`Starting Kiro run (session: ${sessionId || 'new'})`);
+      log('Starting Kiro run (new session)');
 
-      const result = await runKiroChat(prompt, sessionId, containerInput);
-      if (result.newSessionId) {
-        sessionId = result.newSessionId;
-      }
+      const result = await runKiroChat(prompt, containerInput);
 
       writeOutput({
         status: result.status,
         result: result.result,
-        newSessionId: sessionId,
+        newSessionId: result.newSessionId,
         error: result.error,
       });
 
@@ -455,7 +464,7 @@ async function main(): Promise<void> {
     writeOutput({
       status: 'error',
       result: null,
-      newSessionId: sessionId,
+      newSessionId: createSessionId(containerInput.groupFolder),
       error: errorMessage,
     });
     process.exit(1);

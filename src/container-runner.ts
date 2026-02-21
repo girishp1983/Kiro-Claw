@@ -13,6 +13,7 @@ import {
   DATA_DIR,
   GROUPS_DIR,
   IDLE_TIMEOUT,
+  MAIN_GROUP_FOLDER,
 } from './config.js';
 import { readEnvFile } from './env.js';
 import { logger } from './logger.js';
@@ -40,37 +41,46 @@ export interface ContainerOutput {
   error?: string;
 }
 
-function ensureGroupAgentsFile(groupDir: string): void {
-  const agentsPath = path.join(groupDir, 'AGENTS.md');
-  if (fs.existsSync(agentsPath)) return;
+function ensureMainKiroSteeringFile(projectRoot: string): void {
+  const templatePath = path.join(projectRoot, 'Agents_template.md');
+  const targetPath = path.join(
+    GROUPS_DIR,
+    MAIN_GROUP_FOLDER,
+    '.kiro',
+    'steering',
+    'Agents.md',
+  );
 
-  const claudePath = path.join(groupDir, 'CLAUDE.md');
-  if (fs.existsSync(claudePath)) {
-    const claudeContent = fs.readFileSync(claudePath, 'utf-8');
-    fs.writeFileSync(
-      agentsPath,
-      [
-        '# AGENTS',
-        '',
-        'This file is generated from CLAUDE.md for Kiro CLI steering compatibility.',
-        '',
-        claudeContent,
-      ].join('\n'),
-    );
+  if (fs.existsSync(targetPath)) return;
+  if (!fs.existsSync(templatePath)) {
+    logger.warn({ templatePath }, 'Agents template missing, skipping main steering bootstrap');
     return;
   }
 
-  fs.writeFileSync(
-    agentsPath,
-    [
-      '# AGENTS',
-      '',
-      'Add steering instructions for this group here.',
-      '',
-      '- Scope: this group workspace only',
-      '- Runtime: Kiro CLI custom agent',
-    ].join('\n'),
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  fs.copyFileSync(templatePath, targetPath);
+  logger.info({ targetPath }, 'Created main Kiro steering file from template');
+}
+
+function ensureGlobalKiroSteeringFile(projectRoot: string): void {
+  const templatePath = path.join(projectRoot, 'Agents_global.md');
+  const targetPath = path.join(
+    GROUPS_DIR,
+    'global',
+    '.kiro',
+    'steering',
+    'Agents.md',
   );
+
+  if (fs.existsSync(targetPath)) return;
+  if (!fs.existsSync(templatePath)) {
+    logger.warn({ templatePath }, 'Global agents template missing, skipping global steering bootstrap');
+    return;
+  }
+
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  fs.copyFileSync(templatePath, targetPath);
+  logger.info({ targetPath }, 'Created global Kiro steering file from template');
 }
 
 /**
@@ -85,7 +95,8 @@ function buildProcessEnv(
   const projectRoot = process.cwd();
   const groupDir = path.join(GROUPS_DIR, group.folder);
   fs.mkdirSync(groupDir, { recursive: true });
-  ensureGroupAgentsFile(groupDir);
+  ensureMainKiroSteeringFile(projectRoot);
+  ensureGlobalKiroSteeringFile(projectRoot);
 
   // Per-group IPC namespace
   const groupIpcDir = path.join(DATA_DIR, 'ipc', group.folder);

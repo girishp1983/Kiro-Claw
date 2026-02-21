@@ -1,7 +1,5 @@
 # How NanoClaw Launches Kiro CLI
 
-Note: filename kept as `Launch_Claude.md` for historical continuity. Content reflects current Kiro runtime.
-
 ## Code Path
 
 1. `src/index.ts` decides a group needs processing.
