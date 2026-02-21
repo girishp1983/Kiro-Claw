@@ -1,11 +1,11 @@
 ---
 name: setup
-description: Run initial NanoClaw setup. Use when user wants to install dependencies, authenticate WhatsApp, register their main channel, or start background services. Triggers on "setup", "install", "configure nanoclaw", or first-time setup requests.
+description: Run initial Kiro-Claw setup. Use when user wants to install dependencies, authenticate WhatsApp, register their main channel, or start background services. Triggers on "setup", "install", "configure Kiro-claw", or first-time setup requests.
 ---
 
-# NanoClaw Setup (Host Mode, Kiro CLI)
+# Kiro-claw Setup (Host Mode, Kiro CLI)
 
-Run setup scripts automatically. Pause only when user action is required (WhatsApp authentication, choosing channel, confirming paths). Scripts live in `.claude/skills/setup/scripts/` and emit structured status blocks to stdout. Verbose logs go to `logs/setup.log`.
+Run setup scripts automatically. Pause only when user action is required (WhatsApp authentication, choosing channel, confirming paths). Scripts live in `.kiro/skills/setup/scripts/` and emit structured status blocks to stdout. Verbose logs go to `logs/setup.log`.
 
 **Principle:** If something is broken or missing, fix it. Only ask the user to do steps that require human interaction.
 
@@ -13,7 +13,7 @@ Run setup scripts automatically. Pause only when user action is required (WhatsA
 
 ## 1. Check Environment
 
-Run `./.claude/skills/setup/scripts/01-check-environment.sh` and parse the status block.
+Run `./.kiro/skills/setup/scripts/01-check-environment.sh` and parse the status block.
 
 - If HAS_AUTH=true: note WhatsApp auth exists and offer to keep it.
 - If HAS_REGISTERED_GROUPS=true: note existing group config and offer to keep or reconfigure.
@@ -36,7 +36,7 @@ Tell the user to create `~/.kiro/agents/agent_config.json` for their custom agen
 
 ## 2. Install Dependencies
 
-Run `./.claude/skills/setup/scripts/02-install-deps.sh` and parse the status block.
+Run `./.kiro/skills/setup/scripts/02-install-deps.sh` and parse the status block.
 
 If failed:
 
@@ -48,7 +48,7 @@ Only escalate to user help after repeated failures.
 
 ## 3. Runtime Readiness (No Container)
 
-Run `./.claude/skills/setup/scripts/03-setup-container.sh` and parse the status block.
+Run `./.kiro/skills/setup/scripts/03-setup-container.sh` and parse the status block.
 
 This script now verifies host-mode runtime prerequisites:
 
@@ -64,9 +64,9 @@ If HAS_AUTH=true from step 1, confirm whether to keep existing auth or re-authen
 
 AskUserQuestion: QR in browser (recommended) vs pairing code vs QR in terminal?
 
-- QR browser: `./.claude/skills/setup/scripts/04-auth-whatsapp.sh --method qr-browser`
-- Pairing code: `./.claude/skills/setup/scripts/04-auth-whatsapp.sh --method pairing-code --phone NUMBER`
-- QR terminal: `./.claude/skills/setup/scripts/04-auth-whatsapp.sh --method qr-terminal`
+- QR browser: `./.kiro/skills/setup/scripts/04-auth-whatsapp.sh --method qr-browser`
+- Pairing code: `./.kiro/skills/setup/scripts/04-auth-whatsapp.sh --method pairing-code --phone NUMBER`
+- QR terminal: `./.kiro/skills/setup/scripts/04-auth-whatsapp.sh --method qr-terminal`
 
 Handle failures by re-running auth and regenerating QR/pairing code.
 
@@ -90,15 +90,15 @@ For personal chat or DM, construct JID as `NUMBER@s.whatsapp.net`.
 
 For group channels:
 
-1. Run `./.claude/skills/setup/scripts/05-sync-groups.sh`
+1. Run `./.kiro/skills/setup/scripts/05-sync-groups.sh`
 2. If build fails, fix TypeScript errors and retry
 3. If GROUPS_IN_DB=0, inspect logs and re-run sync after fixing auth/connection
-4. Run `./.claude/skills/setup/scripts/05b-list-groups.sh`
+4. Run `./.kiro/skills/setup/scripts/05b-list-groups.sh`
 5. Present likely matches by group name (not JID) and allow Other
 
 ## 7. Register Channel
 
-Run `./.claude/skills/setup/scripts/06-register-channel.sh`:
+Run `./.kiro/skills/setup/scripts/06-register-channel.sh`:
 
 - `--jid "JID"`
 - `--name "main"`
@@ -108,14 +108,14 @@ Run `./.claude/skills/setup/scripts/06-register-channel.sh`:
 
 ## 7b. Change to a New WhatsApp Group (Reconfiguration)
 
-Use this flow when the user says they want to move NanoClaw to a different group.
+Use this flow when the user says they want to move Kiro-Claw to a different group.
 
-1. Refresh groups: `./.claude/skills/setup/scripts/05-sync-groups.sh`
-2. List groups: `./.claude/skills/setup/scripts/05b-list-groups.sh 50`
+1. Refresh groups: `./.kiro/skills/setup/scripts/05-sync-groups.sh`
+2. List groups: `./.kiro/skills/setup/scripts/05b-list-groups.sh 50`
 3. Ask the user which group to switch to (by group name), then capture its JID.
 4. Re-register `main` with the new JID:
 
-`./.claude/skills/setup/scripts/06-register-channel.sh --jid "NEW_GROUP_JID@g.us" --name "main" --trigger "@TriggerWord" --folder "main"`
+`./.kiro/skills/setup/scripts/06-register-channel.sh --jid "NEW_GROUP_JID@g.us" --name "main" --trigger "@TriggerWord" --folder "main"`
 
 5. Restart service so in-memory routing reloads:
 
@@ -133,16 +133,16 @@ Notes:
 
 ## 8. Mount Allowlist
 
-Ask if agent should access directories outside NanoClaw.
+Ask if agent should access directories outside Kiro-claw.
 
-- If no: `./.claude/skills/setup/scripts/07-configure-mounts.sh --empty`
+- If no: `./.kiro/skills/setup/scripts/07-configure-mounts.sh --empty`
 - If yes: pass JSON config through stdin to `07-configure-mounts.sh`
 
 ## 9. Start Service
 
 If already running, unload/restart cleanly first.
 
-Run `./.claude/skills/setup/scripts/08-setup-service.sh` and parse status block.
+Run `./.kiro/skills/setup/scripts/08-setup-service.sh` and parse status block.
 
 If service load fails:
 
@@ -155,7 +155,7 @@ Fix and re-run step 9.
 
 ## 10. Verify
 
-Run `./.claude/skills/setup/scripts/09-verify.sh` and parse status block.
+Run `./.kiro/skills/setup/scripts/09-verify.sh` and parse status block.
 
 If STATUS=failed, fix each failing component:
 

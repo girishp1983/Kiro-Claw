@@ -1,9 +1,9 @@
 ---
 name: setup
-description: Run initial NanoClaw setup. Use when user wants to install dependencies, authenticate WhatsApp, register their main channel, or start background services. Triggers on "setup", "install", "configure nanoclaw", or first-time setup requests.
+description: Run initial Kiro-Claw setup. Use when user wants to install dependencies, authenticate WhatsApp, register their main channel, or start background services. Triggers on "setup", "install", "configure Kiro-claw", or first-time setup requests.
 ---
 
-# NanoClaw Setup (Host Mode, Kiro CLI)
+# Kiro-claw Setup (Host Mode, Kiro CLI)
 
 Run setup scripts automatically. Pause only when user action is required (WhatsApp authentication, choosing channel, confirming paths). Scripts live in `.kiro/skills/setup/scripts/` and emit structured status blocks to stdout. Verbose logs go to `logs/setup.log`.
 
@@ -108,7 +108,7 @@ Run `./.kiro/skills/setup/scripts/06-register-channel.sh`:
 
 ## 7b. Change to a New WhatsApp Group (Reconfiguration)
 
-Use this flow when the user says they want to move NanoClaw to a different group.
+Use this flow when the user says they want to move Kiro-Claw to a different group.
 
 1. Refresh groups: `./.kiro/skills/setup/scripts/05-sync-groups.sh`
 2. List groups: `./.kiro/skills/setup/scripts/05b-list-groups.sh 50`
@@ -133,7 +133,7 @@ Notes:
 
 ## 8. Mount Allowlist
 
-Ask if agent should access directories outside NanoClaw.
+Ask if agent should access directories outside Kiro-claw.
 
 - If no: `./.kiro/skills/setup/scripts/07-configure-mounts.sh --empty`
 - If yes: pass JSON config through stdin to `07-configure-mounts.sh`

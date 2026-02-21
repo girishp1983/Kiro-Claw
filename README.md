@@ -36,6 +36,12 @@ npm run build
 npm start
 ```
 
+You can also ask Kiro to help with setup. Launch `kiro-cli` from the NanoClaw project root and ask it to set up Kiro-claw for you:
+```bash
+cd /path/to/nanoclaw
+kiro-cli
+```
+
 ## How Kiro Is Used
 
 NanoClaw launches Kiro through `container/agent-runner`:
@@ -104,6 +110,12 @@ For full details: `analyze_architecture/MEMORY.md`.
 ## Run As Service (macOS launchd)
 
 ```bash
+# load service
+launchctl load ~/Library/LaunchAgents/com.nanoclaw.plist
+
+# unload service
+launchctl unload ~/Library/LaunchAgents/com.nanoclaw.plist
+
 # restart after build
 launchctl kickstart -k gui/$(id -u)/com.nanoclaw
 
