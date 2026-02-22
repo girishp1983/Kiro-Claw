@@ -8,12 +8,14 @@ const OUTPUT_END_MARKER = '---NANOCLAW_OUTPUT_END---';
 
 // Mock config
 vi.mock('./config.js', () => ({
-  CONTAINER_IMAGE: 'nanoclaw-agent:latest',
+  AGENT_IMAGE: 'nanoclaw-agent:latest',
+  AGENT_RUNTIME: 'docker',
   CONTAINER_MAX_OUTPUT_SIZE: 10485760,
   CONTAINER_TIMEOUT: 1800000, // 30min
   DATA_DIR: '/tmp/nanoclaw-test-data',
   GROUPS_DIR: '/tmp/nanoclaw-test-groups',
   IDLE_TIMEOUT: 1800000, // 30min
+  MAIN_GROUP_FOLDER: 'main',
 }));
 
 // Mock logger
@@ -56,12 +58,19 @@ function createFakeProcess() {
     stdout: PassThrough;
     stderr: PassThrough;
     kill: ReturnType<typeof vi.fn>;
+    unref: ReturnType<typeof vi.fn>;
+    killed: boolean;
     pid: number;
   };
   proc.stdin = new PassThrough();
   proc.stdout = new PassThrough();
   proc.stderr = new PassThrough();
-  proc.kill = vi.fn();
+  proc.killed = false;
+  proc.kill = vi.fn((_signal?: NodeJS.Signals) => {
+    proc.killed = true;
+    return true;
+  });
+  proc.unref = vi.fn();
   proc.pid = 12345;
   return proc;
 }
@@ -198,5 +207,30 @@ describe('container-runner timeout behavior', () => {
     const result = await resultPromise;
     expect(result.status).toBe('success');
     expect(result.newSessionId).toBe('session-456');
+  });
+
+  it('timeout escalation sends SIGKILL if process does not close', async () => {
+    const onOutput = vi.fn(async () => {});
+    const resultPromise = runContainerAgent(
+      testGroup,
+      testInput,
+      () => {},
+      onOutput,
+    );
+
+    // Fire the hard timeout first.
+    await vi.advanceTimersByTimeAsync(1830000);
+    expect(fakeProc.kill).toHaveBeenCalledWith('SIGTERM');
+
+    // Still no close event, so escalation timer should force SIGKILL.
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(fakeProc.kill).toHaveBeenCalledWith('SIGKILL');
+
+    // Finish run.
+    fakeProc.emit('close', 137);
+    await vi.advanceTimersByTimeAsync(10);
+
+    const result = await resultPromise;
+    expect(result.status).toBe('error');
   });
 });

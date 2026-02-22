@@ -462,18 +462,47 @@ export async function runContainerAgent(
     });
 
     let timedOut = false;
+    let processClosed = false;
     let hadStreamingOutput = false;
     const configTimeout = group.containerConfig?.timeout || CONTAINER_TIMEOUT;
     const timeoutMs = Math.max(configTimeout, IDLE_TIMEOUT + 30_000);
+    const containerName = processName.slice(0, 63);
+
+    const forceRemoveDockerContainer = () => {
+      if (runtime !== 'docker') return;
+      const rm = spawn('docker', ['rm', '-f', containerName], {
+        stdio: 'ignore',
+        env: {
+          ...process.env,
+          PATH: process.env.PATH || '',
+        },
+      });
+      rm.on('error', (err) => {
+        logger.debug(
+          { group: group.name, containerName, error: err },
+          'Best-effort docker rm -f failed',
+        );
+      });
+      rm.unref();
+    };
 
     const killOnTimeout = () => {
       timedOut = true;
       logger.error({ group: group.name, processName }, 'Agent process timeout, sending SIGTERM');
-      container.kill('SIGTERM');
+      try {
+        container.kill('SIGTERM');
+      } catch (err) {
+        logger.warn({ group: group.name, processName, error: err }, 'Failed to send SIGTERM to agent process');
+      }
       setTimeout(() => {
-        if (!container.killed) {
+        if (!processClosed) {
           logger.warn({ group: group.name, processName }, 'SIGTERM ignored, sending SIGKILL');
-          container.kill('SIGKILL');
+          try {
+            container.kill('SIGKILL');
+          } catch (err) {
+            logger.warn({ group: group.name, processName, error: err }, 'Failed to send SIGKILL to agent process');
+          }
+          forceRemoveDockerContainer();
         }
       }, 15000);
     };
@@ -486,6 +515,7 @@ export async function runContainerAgent(
     };
 
     container.on('close', (code) => {
+      processClosed = true;
       clearTimeout(timeout);
       const duration = Date.now() - startTime;
 
@@ -662,6 +692,7 @@ export async function runContainerAgent(
     });
 
     container.on('error', (err) => {
+      processClosed = true;
       clearTimeout(timeout);
       logger.error({ group: group.name, processName, error: err }, 'Agent spawn error');
       resolve({

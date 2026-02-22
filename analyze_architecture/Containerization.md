@@ -10,7 +10,50 @@ So it is expected to see:
 - `launchctl list | grep nanoclaw` -> running host orchestrator
 - `docker ps` -> empty when idle, active `nanoclaw-main-...` container only during agent work
 
-## 2) How the Container Is Built
+### Container Boundary Diagram
+
+```mermaid
+flowchart LR
+  WA["WhatsApp Cloud/WebSocket"]
+
+  subgraph HOST["Host macOS (outside container)"]
+    LD["launchd service: com.nanoclaw"]
+    ORCH["NanoClaw orchestrator<br/>WhatsApp channel, scheduler, IPC watcher, DB"]
+    DB["SQLite: store/messages.db"]
+    AUTH["WhatsApp auth: store/auth"]
+    LD --> ORCH
+    ORCH <--> DB
+    ORCH <--> AUTH
+  end
+
+  subgraph DOCKER["Docker container (on-demand worker)"]
+    AR["agent-runner + kiro-cli"]
+    MCP["MCP servers (composio, playwright, etc.)"]
+    AR <--> MCP
+  end
+
+  ORCH <--> WA
+  ORCH -->|"spawn docker run"| AR
+  AR -->|"tool output / reply"| ORCH
+```
+
+## 2) Why Hybrid Architecture
+
+NanoClaw separates control plane and execution plane:
+- Host process keeps long-lived stateful responsibilities stable:
+  - WhatsApp Web session/socket lifecycle
+  - scheduler loop and IPC watcher
+  - local SQLite state + launchd supervision
+- Containers isolate agent runs:
+  - tool execution and dependencies
+  - crash/timeout impact bounded to the run container
+  - rebuild/upgrade of agent image without replacing the always-on service loop
+
+Practical result:
+- If one Kiro run hangs/crashes, WhatsApp connectivity and scheduling remain alive.
+- Containers are short-lived workers; host service is persistent orchestrator.
+
+## 3) How the Container Is Built
 
 Primary path:
 ```bash
@@ -27,7 +70,7 @@ Key build details:
 - Entry point is `/app/entrypoint.sh` (reads JSON from stdin, runs agent-runner).
 - Agent runner code is in `container/agent-runner`.
 
-## 3) Runtime Mounts (Host -> Container)
+## 4) Runtime Mounts (Host -> Container)
 
 Configured in `src/container-runner.ts`:
 - `groups/<group>` -> `/workspace/group`
@@ -40,7 +83,7 @@ Configured in `src/container-runner.ts`:
 
 Last two mounts were critical for Kiro auth persistence in containerized runs.
 
-## 4) How to Verify Process + Container
+## 5) How to Verify Process + Container
 
 Check service:
 ```bash
@@ -63,7 +106,7 @@ Healthy signs in logs:
 - `Spawning agent process` with `runtime: "docker"`
 - `Message sent`
 
-## 5) WhatsApp Authentication (What We Had To Do)
+## 6) WhatsApp Authentication (What We Had To Do)
 
 When logged out / 401:
 1. Re-auth:
@@ -82,7 +125,7 @@ npm run auth -- --pairing-code --phone <your_number_with_country_code>
 
 After success, credentials persist under `store/auth`, so restart normally keeps auth.
 
-## 6) Kiro Authentication (What We Had To Do)
+## 7) Kiro Authentication (What We Had To Do)
 
 Symptoms:
 - Container runs failed with:
@@ -113,7 +156,7 @@ docker run --rm \
   nanoclaw-agent:latest whoami
 ```
 
-## 7) What Was Done So You Don’t Have To Repeat It
+## 8) What Was Done So You Don’t Have To Repeat It
 
 Persistent fixes already in code:
 - Added `~/.aws` mount to container runtime.
@@ -125,3 +168,19 @@ Operationally persistent:
 - Service restarts use same launchd plist (`com.nanoclaw`).
 
 As long as those host auth directories are not deleted, re-auth should not be needed on each restart.
+
+## 9) `launchctl load` Behavior
+
+If you run:
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.nanoclaw.plist
+```
+
+it starts the **host orchestrator process** (`com.nanoclaw`), not a permanent always-on agent container.
+
+By default this project launches agent runs in Docker because:
+- `NANOCLAW_AGENT_RUNTIME` defaults to `docker` in `src/config.ts`.
+- Your plist does not override `NANOCLAW_AGENT_RUNTIME`.
+
+So, after `launchctl load`, agent containers are still created **on demand** when messages/tasks are processed.

@@ -249,7 +249,6 @@ function ensureNanoclawMcpForKiro(
     const mcpServers = (parsed.mcpServers && typeof parsed.mcpServers === 'object')
       ? parsed.mcpServers
       : {};
-    const isDockerRuntime = process.env.NANOCLAW_IN_DOCKER === '1';
 
     const nanoclawServer: KiroMcpServerConfig = {
       type: 'stdio',
@@ -262,15 +261,6 @@ function ensureNanoclawMcpForKiro(
       },
       disabled: false,
     };
-
-    if (isDockerRuntime) {
-      for (const [serverName, serverConfig] of Object.entries(mcpServers)) {
-        if (serverName === 'nanoclaw') continue;
-        if (serverConfig && typeof serverConfig === 'object') {
-          (serverConfig as Record<string, unknown>).disabled = true;
-        }
-      }
-    }
 
     mcpServers.nanoclaw = nanoclawServer;
     parsed.mcpServers = mcpServers;
@@ -290,6 +280,7 @@ async function runKiroChat(
 ): Promise<ContainerOutput> {
   ensureNanoclawMcpForKiro(input);
   const agentName = resolveAgentName();
+  const hasSession = typeof input.sessionId === 'string' && input.sessionId.trim().length > 0;
   const args: string[] = [
     'chat',
     '--no-interactive',
@@ -299,6 +290,10 @@ async function runKiroChat(
     '--agent',
     agentName,
   ];
+
+  if (hasSession) {
+    args.push('--resume');
+  }
 
   if (process.env.KIRO_MODEL && process.env.KIRO_MODEL.trim()) {
     args.push('--model', process.env.KIRO_MODEL.trim());
@@ -321,7 +316,7 @@ async function runKiroChat(
     let stdout = '';
     let stderr = '';
 
-    log(`Spawning kiro-cli (agent=${agentName}, new-session=true)`);
+    log(`Spawning kiro-cli (agent=${agentName}, new-session=${hasSession ? 'false' : 'true'})`);
 
     const child = spawn('kiro-cli', args, {
       cwd: GROUP_DIR,
@@ -444,9 +439,15 @@ async function main(): Promise<void> {
 
   try {
     while (true) {
-      log('Starting Kiro run (new session)');
+      const hasSession = typeof containerInput.sessionId === 'string'
+        && containerInput.sessionId.trim().length > 0;
+      log(`Starting Kiro run (${hasSession ? 'resume session' : 'new session'})`);
 
       const result = await runKiroChat(prompt, containerInput);
+
+      if (result.newSessionId) {
+        containerInput.sessionId = result.newSessionId;
+      }
 
       writeOutput({
         status: result.status,
