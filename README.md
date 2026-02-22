@@ -18,61 +18,30 @@ Kiro-Claw runs as a small Node.js service:
 - Leverages Custom Agent feature of Kiro-CLI. It loads MCPs, Skills and Agents.md as per agent_config.json
 - Setup is very easy. Just lauch Kiro-CLI in route folder and ask it to help you with setup. That is it!!!
 
-## Quick Start
-
-1. Install dependencies:
-```bash
-npm install
-```
-
-2. Authenticate WhatsApp:
-```bash
-npm run auth
-```
-
-3. Ensure Kiro CLI is installed and logged in:
-```bash
-kiro-cli whoami
-```
-
-4. Ensure your custom agent exists:
-- `~/.kiro/agents/agent_config.json`
-- Example agent name: `kiro-assistant`
-
-5. Build and start:
-```bash
-npm run build
-npm start
-```
-
-You can also ask Kiro to help with setup. Launch `kiro-cli` from the NanoClaw project root and ask it to set up Kiro-claw for you:
-```bash
-cd /path/to/nanoclaw
-kiro-cli
-```
-
 ## Guided Setup With Kiro `setup` Skill
 
 Start `kiro-cli` at the project root and ask:
 
 `Use the setup skill to configure Kiro-Claw for WhatsApp and register my main group.`
 
-The setup skill automates WhatsApp setup end-to-end:
-1. Checks environment prerequisites (Node, `kiro-cli`, agent config, existing auth/group config).
-2. Installs dependencies.
+The setup skill automates full bootstrap (not just WhatsApp auth):
+1. Checks environment prerequisites and existing state (Node, `kiro-cli`, Kiro agent config, existing WhatsApp auth, existing registered groups).
+2. Installs project dependencies.
 3. Validates host runtime readiness (`npm run build`, `kiro-cli`, `~/.kiro/agents/agent_config.json`).
-4. Runs WhatsApp authentication (QR browser, pairing code, or terminal QR).
+4. Handles WhatsApp authentication (QR browser, pairing code, or terminal QR), with retry flow.
 5. Reads authenticated bot number from `store/auth/creds.json`.
 6. Asks for trigger word and channel type (group vs DM/self-chat).
-7. Syncs WhatsApp groups, lists groups, asks you to choose by group name.
-8. Maps selected group to JID and registers it in `registered_groups` (folder `main`, trigger, trigger-required mode).
-9. Configures mount allowlist (`~/.config/nanoclaw/mount-allowlist.json`).
-10. Creates/loads background service (`launchd` on macOS, `systemd` on Linux).
-11. Runs end-to-end verification and points you to logs.
+7. For group channels, syncs chats from WhatsApp and lists candidate groups by name.
+8. Maps selected group name to JID (or uses DM JID), then registers the channel in `registered_groups` (`jid`, `folder`, trigger settings).
+9. Supports later reconfiguration to move `main` to a different WhatsApp group.
+10. Configures mount allowlist at `~/.config/nanoclaw/mount-allowlist.json`.
+11. Builds and installs background service config (`launchd` on macOS, `systemd` on Linux), then loads/starts it.
+12. Runs end-to-end verification (service status, Kiro CLI/config, WhatsApp auth, registered groups, mount config).
+13. Provides log locations and troubleshooting guidance when checks fail.
 
 Important detail: group name is used only for selection UX; runtime routing is done by registered JID.
 
-## How Kiro Is Used
+## How Kiro-CLI is launched to perform tasks?
 
 Kiro-Claw launches Kiro through `container/agent-runner`:
 - Command shape:
@@ -98,6 +67,8 @@ Kiro tool/MCP availability and resource loading come from this same agent config
 Before agent execution, Kiro-Claw bootstraps steering files if missing:
 - `Agents_template.md` -> `groups/main/.kiro/steering/Agents.md` (create only if target missing)
 - `Agents_global.md` -> `groups/global/.kiro/steering/Agents.md` (create only if target missing)
+
+This bootstrap is performed by NanoClaw host code in `src/container-runner.ts` during agent-run preparation.
 
 If target files already exist, Kiro-Claw leaves them untouched.
 
@@ -136,6 +107,41 @@ Memory for Kiro comes from multiple layers:
 - Task/run metadata in SQL (`scheduled_tasks`, `task_run_logs`)
 
 For full details: `analyze_architecture/MEMORY.md`.
+
+## Quick Start
+
+Recommendation: for first-time setup, run the guided setup flow even if you plan to use `Quick Start` only. It configures WhatsApp auth, group/JID registration, and validation checks required by both run modes. If you only want foreground mode afterward, you can unload launchd service.
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Authenticate WhatsApp:
+```bash
+npm run auth
+```
+
+3. Ensure Kiro CLI is installed and logged in:
+```bash
+kiro-cli whoami
+```
+
+4. Ensure your custom agent exists:
+- `~/.kiro/agents/agent_config.json`
+- Example agent name: `kiro-assistant`
+
+5. Build and start:
+```bash
+npm run build
+npm start
+```
+
+You can also ask Kiro to help with setup. Launch `kiro-cli` from the NanoClaw project root and ask it to set up Kiro-claw for you:
+```bash
+cd /path/to/nanoclaw
+kiro-cli
+```
 
 ## Run As Service (macOS launchd)
 
