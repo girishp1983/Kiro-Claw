@@ -139,6 +139,24 @@ For full details: `analyze_architecture/MEMORY.md`.
 
 ## Run As Service (macOS launchd)
 
+Quick Start vs Run As Service:
+- `Quick Start` runs NanoClaw in the foreground (`npm start`) for local/manual use.
+- `Run As Service` runs NanoClaw in background via launchd (`com.nanoclaw`) for 24x7 operation and auto-restart.
+- For first-time setup in either mode, ensure at least one WhatsApp target is registered in `registered_groups` (setup skill handles this).
+
+The setup skill runs:
+
+```bash
+./.kiro/skills/setup/scripts/08-setup-service.sh
+```
+
+What this script does on macOS:
+- Runs `npm run build`
+- Generates `~/Library/LaunchAgents/com.nanoclaw.plist`
+- Sets launchd `ProgramArguments` to `node <project>/dist/index.js`
+- Sets `WorkingDirectory`, `PATH`, `HOME`, stdout/stderr log paths
+- Calls `launchctl load` and verifies service appears in `launchctl list`
+
 ```bash
 # load service
 launchctl load ~/Library/LaunchAgents/com.nanoclaw.plist
