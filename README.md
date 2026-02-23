@@ -1,5 +1,7 @@
 # Kiro-Claw
 
+![Kiro-Claw](images/Kiro-Claw.png)
+
 Personal WhatsApp assistant powered by **Kiro CLI** and a **custom Kiro agent**. It has 500+ tools like audio, video generation; email, calendar etc.
 
 Kiro-Claw runs as a small Node.js service:
@@ -17,6 +19,12 @@ Kiro-Claw runs as a small Node.js service:
 - For other memories it can create .md files, it can build Skill.md to develop skills
 - Leverages Custom Agent feature of Kiro-CLI. It loads MCPs, Skills and Agents.md as per agent_config.json
 - Setup is very easy. Just lauch Kiro-CLI in route folder and ask it to help you with setup. That is it!!!
+
+## Architecture
+
+![Kiro-Claw Architecture](images/Kiro-Claw-Architecture.png)
+
+![WhatsApp](images/Whatsapp.png)
 
 ## Guided Setup With Kiro `setup` Skill
 
