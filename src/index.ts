@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 import {
   ASSISTANT_NAME,
@@ -49,6 +50,38 @@ let messageLoopRunning = false;
 
 let whatsapp: WhatsAppChannel;
 const queue = new GroupQueue();
+
+function ensureKiroAgentConfigFromTemplate(): void {
+  const homeDir = process.env.HOME;
+  if (!homeDir) {
+    logger.warn('HOME is not set; skipping Kiro agent config bootstrap');
+    return;
+  }
+
+  const runtimeDir = path.dirname(fileURLToPath(import.meta.url));
+  const projectRoot = path.resolve(runtimeDir, '..');
+  const templatePath = path.join(projectRoot, 'agent_config_template.json');
+  const agentConfigDir = path.join(homeDir, '.kiro', 'agents');
+  const agentConfigPath = path.join(agentConfigDir, 'agent_config.json');
+
+  if (fs.existsSync(agentConfigPath)) return;
+
+  if (!fs.existsSync(templatePath)) {
+    logger.warn(
+      { templatePath, agentConfigPath },
+      'Kiro agent config template not found; skipping bootstrap',
+    );
+    return;
+  }
+
+  fs.mkdirSync(agentConfigDir, { recursive: true });
+  fs.copyFileSync(templatePath, agentConfigPath);
+
+  logger.info(
+    { templatePath, agentConfigPath },
+    'Bootstrapped Kiro agent config from template',
+  );
+}
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -398,6 +431,7 @@ function recoverPendingMessages(): void {
 }
 
 async function main(): Promise<void> {
+  ensureKiroAgentConfigFromTemplate();
   initDatabase();
   logger.info('Database initialized');
   loadState();

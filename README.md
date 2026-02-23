@@ -105,6 +105,152 @@ Important detail: group name is used only for selection UX; runtime routing is d
 | Logs | logs/nanoclaw.log, logs/nanoclaw.error.log |
 | Mount Access | ~/Documents |
 
+## Custom Agent Configuration
+
+At service launch, Kiro-Claw checks for:
+- `~/.kiro/agents/agent_config.json`
+
+If it does not exist, Kiro-Claw creates it by copying:
+- `<project_root>/agent_config_template.json`
+
+If `agent_config.json` already exists, Kiro-Claw leaves it unchanged.
+
+After bootstrap, update secrets in `~/.kiro/agents/agent_config.json`:
+- Composio MCP key: `mcpServers.composio.headers["x-api-key"]`
+- ZAI MCP key: `mcpServers["zai-mcp-server"].env.Z_AI_API_KEY`
+
+Without valid keys, Composio/ZAI tools will be unavailable at runtime.
+
+Template content (`agent_config_template.json`):
+
+<details>
+<summary>View <code>agent_config_template.json</code></summary>
+
+```json
+{
+  "name": "kiro-assistant",
+  "description": "A custom agent for my workflow",
+  "mcpServers": {
+    "pencil": {
+      "command": "/Applications/Pencil.app/Contents/Resources/app.asar.unpacked/out/mcp-server-darwin-arm64",
+      "args": [
+        "--ws-port",
+        "64657"
+      ],
+      "env": {},
+      "type": "stdio",
+      "disabled": false
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ],
+      "env": {},
+      "disabled": false
+    },
+    "composio": {
+      "type": "http",
+      "url": "https://backend.composio.dev/tool_router/trs_8YCbLt0jkO8_/mcp",
+      "headers": {
+        "x-api-key": "Your Key"
+      },
+      "disabled": false
+    },
+    "zai-mcp-server": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@z_ai/mcp-server"
+      ],
+      "env": {
+        "Z_AI_API_KEY": "Your key",
+        "Z_AI_MODE": "ZAI"
+      },
+      "disabled": false
+    },
+    "excel": {
+      "command": "npx",
+      "args": [
+        "--yes",
+        "@negokaz/excel-mcp-server"
+      ],
+      "env": {
+        "EXCEL_MCP_PAGING_CELLS_LIMIT": "4000"
+      },
+      "disabled": false
+    },
+    "nanoclaw": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/Users/girpatil/Documents/Coding/ClaudeCode/cowork/Kiro-Claw-Github/nanoclaw/container/agent-runner/dist/ipc-mcp-stdio.js"
+      ],
+      "env": {
+        "NANOCLAW_CHAT_JID": "120363408325112407@g.us",
+        "NANOCLAW_GROUP_FOLDER": "main",
+        "NANOCLAW_IS_MAIN": "1"
+      },
+      "disabled": false
+    }
+  },
+  "tools": [
+    "@pencil",
+    "@composio",
+    "@playwright",
+    "@zai-mcp-server",
+    "@excel",
+    "read",
+    "glob",
+    "grep",
+    "write",
+    "shell",
+    "aws",
+    "web_search",
+    "web_fetch",
+    "introspect",
+    "report",
+    "knowledge",
+    "thinking",
+    "todo",
+    "use_subagent",
+    "@nanoclaw"
+  ],
+  "allowedTools": [
+    "@pencil",
+    "@composio",
+    "@playwright",
+    "@zai-mcp-server",
+    "@excel",
+    "read",
+    "glob",
+    "grep",
+    "write",
+    "shell",
+    "aws",
+    "web_search",
+    "web_fetch",
+    "introspect",
+    "report",
+    "knowledge",
+    "thinking",
+    "todo",
+    "use_subagent",
+    "@nanoclaw"
+  ],
+  "resources": [
+    "skill://~/.kiro/skills/**/SKILL.md",
+    "file://.kiro/steering/Agents.md"
+  ],
+  "prompt": "You are a general purpose agent you will try your best to complete a tasks with available tools and skills",
+  "model": "claude-sonnet-4.5"
+}
+```
+
+</details>
+
 ## How Kiro-CLI is launched to perform tasks?
 
 Kiro-Claw launches Kiro through `container/agent-runner`:
