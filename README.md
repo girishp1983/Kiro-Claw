@@ -61,6 +61,10 @@ The setup skill automates full bootstrap (not just WhatsApp auth):
 
 Important detail: group name is used only for selection UX; runtime routing is done by registered JID.
 
+![Kiro-Claw Setup Skills](images/Kiro-Claw-Setup-Skills.png)
+
+![WhatsApp Setup](images/WhatsApp-Setup.png)
+
 ### Sample run of guided setup
 
 | Step | Script | What It Did |
